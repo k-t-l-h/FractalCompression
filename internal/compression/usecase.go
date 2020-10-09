@@ -117,15 +117,50 @@ func (t *Table) getValue() error {
 		return errors.New("error while counting values")
 	}
 
-	for i, col := range t.Columns {
+	for _, col := range t.Columns {
 		col.Values = value
-		if col.UniqueValues > col.Values/t.K {
-			t.Incompressible = append(t.Incompressible, i)
-		} else {
-			t.Compressible = append(t.Compressible, i)
-		}
 	}
 	return nil
 }
 
-//получение дерева
+//определение сжимаемых и несжимаемых столбцов таблицы
+func (t *Table) getCompressible()  {
+
+	for i, col := range t.Columns {
+		//
+		state := false
+		//точно несжимаемые столбцы
+		state = state || col.Constrains.Key
+		state = state || col.Constrains.Sequence
+		state = state || col.Constrains.Exclusion
+		state = state || col.Constrains.PrimaryKey
+		state = state || col.Constrains.ReferenceKey
+
+		//потенциально несжимаемые
+		//TODO: обработка пользовательских ограничений
+
+
+		if !state && (col.UniqueValues <= col.Values/t.K) {
+			t.Compressible = append(t.Compressible, i)
+		} else {
+			t.Incompressible = append(t.Incompressible, i)
+		}
+	}
+
+}
+
+//определение приоритетов столбцов
+func (t *Table) getPriorities()  error{
+
+	//TODO: получение дерева приоритетов из базы данных
+	for _, col := range t.Columns {
+		//TODO: подстановка приоритета на основе дерева приоритетов
+		col.Priority = 1
+	}
+	return nil
+}
+
+//генетический алгоритм
+func (t *Table) getDomens()  {
+
+}

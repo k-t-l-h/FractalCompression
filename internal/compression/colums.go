@@ -16,4 +16,5 @@ type Column struct {
 
 	Values       uint64
 	UniqueValues uint64
+	Priority uint64
 }
