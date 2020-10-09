@@ -124,7 +124,7 @@ func (t *Table) getValue() error {
 }
 
 //определение сжимаемых и несжимаемых столбцов таблицы
-func (t *Table) getCompressible()  {
+func (t *Table) getCompressible() {
 
 	for i, col := range t.Columns {
 		//
@@ -139,7 +139,6 @@ func (t *Table) getCompressible()  {
 		//потенциально несжимаемые
 		//TODO: обработка пользовательских ограничений
 
-
 		if !state && (col.UniqueValues <= col.Values/t.K) {
 			t.Compressible = append(t.Compressible, i)
 		} else {
@@ -150,7 +149,7 @@ func (t *Table) getCompressible()  {
 }
 
 //определение приоритетов столбцов
-func (t *Table) getPriorities()  error{
+func (t *Table) getPriorities() error {
 
 	//TODO: получение дерева приоритетов из базы данных
 	for _, col := range t.Columns {
@@ -161,6 +160,6 @@ func (t *Table) getPriorities()  error{
 }
 
 //генетический алгоритм
-func (t *Table) getDomens()  {
+func (t *Table) getDomens() {
 
 }
