@@ -19,9 +19,9 @@ func TestTable_Compress(t1 *testing.T) {
 		name   string
 		fields fields
 	}{
-		{ },
+		{},
 	}
-		for _, _ = range tests {
+	for _, _ = range tests {
 
 	}
 }
