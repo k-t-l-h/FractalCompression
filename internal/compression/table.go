@@ -16,5 +16,5 @@ type Table struct {
 	//информация о несжимаемых столбцах таблицы
 	Incompressible []int
 	//информация о выбранных доменах для сжатия
-	Domens []interface{}
+	Domens []int
 }

@@ -7,6 +7,24 @@ import (
 )
 
 func (t *Table) Compress() {
+
+	//TODO: обработка ошибок
+
+	t.getMeta()
+
+	t.getConstrains()
+
+	t.getValue()
+
+	t.getValueFactor()
+
+	t.getCompressible()
+
+	t.getPriorities()
+
+	t.getDomens()
+
+	t.compressData()
 }
 
 //получение названий и типов столбцов таблицы
@@ -84,6 +102,7 @@ func (t *Table) getValueFactor() error {
 	chn := make(chan error, len(t.Columns))
 
 	for i := 0; i < len(t.Columns); i++ {
+
 		wg.Add(1)
 		go func(i int) {
 			value, err := t.Database.GetUniqueValues(t.Name, t.Columns[i].Name)
@@ -91,6 +110,7 @@ func (t *Table) getValueFactor() error {
 			chn <- err
 			defer wg.Done()
 		}(i)
+
 	}
 
 	wg.Wait()
@@ -160,5 +180,18 @@ func (t *Table) getPriorities() error {
 
 //генетический алгоритм
 func (t *Table) getDomens() {
+	//TODO: генетический алгоритм
+	t.Domens = []int{1, 2}
+}
 
+func (t *Table) compressData() error {
+	//TODO: получение имен столбцов
+	c := []string{"valueA", "valueB"}
+	u := []string{"data"}
+
+	err := t.Database.Compress(c, u, t.Name)
+	if err != nil {
+		return errors.New("error while compressing data")
+	}
+	return nil
 }
