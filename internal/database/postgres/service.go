@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
+	"log"
 )
 
 type PG struct {
 	pool *pgx.ConnPool
+}
+
+func NewPG(pool *pgx.ConnPool) *PG {
+	return &PG{pool: pool}
 }
 
 //получение названий столбцов и их типов данных из информационной таблицы базы данных
@@ -63,7 +68,7 @@ func (p *PG) GetConstraints(tableName, columnName string) ([]string, error) {
 //получение уникальных значений в столбце
 func (p *PG) GetValues(tableName string) (uint64, error) {
 	var num uint64
-	tableName = pgx.Identifier.Sanitize(tableName)
+	//tableName = pgx.Identifier.Sanitize(tableName)
 	GetValue := fmt.Sprintf("SELECT COUNT(*) FROM %s;", tableName)
 
 	row := p.pool.QueryRow(GetValue)
@@ -76,11 +81,12 @@ func (p *PG) GetValues(tableName string) (uint64, error) {
 
 func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error) {
 	var num uint64
-	tableName = pgx.Identifier.Sanitize(tableName)
-	columnName = pgx.Identifier.Sanitize(columnName)
+	//tableName = pgx.Identifier.Sanitize(tableName)
+	//columnName = pgx.Identifier.Sanitize(columnName)
+	log.Print(columnName)
+	GetUniqueValue := fmt.Sprintf("SELECT COUNT( DISTINCT \"%s\" ) FROM %s;", columnName, tableName)
 
-	GetUniqueValue := fmt.Sprintf("SELECT COUNT(DISTINCT %s) FROM %s;", columnName, tableName)
-
+	log.Print(GetUniqueValue)
 	row := p.pool.QueryRow(GetUniqueValue)
 	err := row.Scan(&num)
 	if err != nil {
@@ -88,4 +94,37 @@ func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error
 	}
 
 	return num, nil
+}
+
+func (p *PG) Compress(compressible []string, other []string, tableName string) error {
+
+	//TODO: создать таблицы для сжатия данных и внешние и первичные ключи
+	compress := ""
+	for _, name := range compressible {
+		//name = pgx.Identifier.Sanitize(name)
+		compress += "\"" + name + "\"" + ", "
+	}
+	//TODO: обработать ошибки с выходом за диапазон
+	compress = compress[:len(compress)-2]
+
+	uncompress := ""
+	for _, name := range other {
+		//name = pgx.Identifier.Sanitize(name)
+		uncompress += "\"" + name + "\"" + ", "
+	}
+	//TODO: обработать ошибки с выходом за диапазон
+	uncompress = uncompress[:len(uncompress)-2]
+
+	//TODO: добавить возможность выбора хеш-функции
+	compressQuery := fmt.Sprintf("INSERT INTO compress ("+
+		"SELECT md5(ROW(%s)::TEXT), %s FROM %s) ON CONFLICT do nothing", compress, compress, tableName)
+
+	//TODO: alter table drop column для in-memory записи
+	exec, err := p.pool.Exec(compressQuery)
+	if err != nil {
+		return errors.Wrap(err, "error while compressing data: ")
+	} else if exec.RowsAffected() == 0 {
+		return errors.New("error while compressing data: nothing was compressed")
+	}
+	return nil
 }
