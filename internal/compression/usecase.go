@@ -6,25 +6,41 @@ import (
 	"sync"
 )
 
-func (t *Table) Compress() {
+func (t *Table) Compress() error {
 
-	//TODO: обработка ошибок
+	if ok := t.getMeta(); ok != nil {
+		return ok
+	}
 
-	t.getMeta()
+	if ok := t.getConstrains(); ok != nil {
+		return ok
+	}
 
-	t.getConstrains()
+	if ok := t.getValue(); ok != nil {
+		return ok
+	}
 
-	t.getValue()
+	if ok := t.getValueFactor(); ok != nil {
+		return ok
+	}
 
-	t.getValueFactor()
+	if ok := t.getCompressible(); ok != nil {
+		return ok
+	}
 
-	t.getCompressible()
+	if ok := t.getPriorities(); ok != nil {
+		return ok
+	}
 
-	t.getPriorities()
+	if ok := t.getDomens(); ok != nil {
+		return ok
+	}
 
-	t.getDomens()
+	if ok := t.compressData(); ok != nil {
+		return ok
+	}
 
-	t.compressData()
+	return nil
 }
 
 //получение названий и типов столбцов таблицы
@@ -143,7 +159,8 @@ func (t *Table) getValue() error {
 }
 
 //определение сжимаемых и несжимаемых столбцов таблицы
-func (t *Table) getCompressible() {
+//возвращает ошибку, если нет столбцов для сжатия или их меньше двух
+func (t *Table) getCompressible() error {
 
 	for i, col := range t.Columns {
 		//
@@ -165,6 +182,10 @@ func (t *Table) getCompressible() {
 		}
 	}
 
+	if len(t.Compressible) < 2 {
+		return errors.New("compression is not possible")
+	}
+	return nil
 }
 
 //определение приоритетов столбцов
@@ -179,9 +200,11 @@ func (t *Table) getPriorities() error {
 }
 
 //генетический алгоритм
-func (t *Table) getDomens() {
+func (t *Table) getDomens() error {
 	//TODO: генетический алгоритм
+	//TODO: обработка ошибок связи с бд внутри генетического алгоритма
 	t.Domens = []int{1, 2}
+	return nil
 }
 
 func (t *Table) compressData() error {
