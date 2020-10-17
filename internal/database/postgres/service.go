@@ -98,22 +98,29 @@ func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error
 
 func (p *PG) Compress(compressible []string, other []string, tableName string) error {
 
+	if len(compressible) < 2 {
+		return errors.New("error while compressing data: nor enough columns")
+	}
+
 	//TODO: создать таблицы для сжатия данных и внешние и первичные ключи
 	compress := ""
 	for _, name := range compressible {
 		//name = pgx.Identifier.Sanitize(name)
 		compress += "\"" + name + "\"" + ", "
 	}
-	//TODO: обработать ошибки с выходом за диапазон
-	compress = compress[:len(compress)-2]
+
+	if len(compress) > 2 {
+		compress = compress[:len(compress)-2]
+	}
 
 	uncompress := ""
 	for _, name := range other {
 		//name = pgx.Identifier.Sanitize(name)
 		uncompress += "\"" + name + "\"" + ", "
 	}
-	//TODO: обработать ошибки с выходом за диапазон
-	uncompress = uncompress[:len(uncompress)-2]
+	if len(compress) > 2 {
+		uncompress = uncompress[:len(uncompress)-2]
+	}
 
 	//TODO: добавить возможность выбора хеш-функции
 	compressQuery := fmt.Sprintf("INSERT INTO compress ("+
