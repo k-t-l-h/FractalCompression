@@ -219,5 +219,7 @@ func (t *Table) compressData() error {
 	if err != nil {
 		return errors.New("error while compressing data")
 	}
+
+	log.Print(t.Database.PostCompress(c, t.Name))
 	return nil
 }

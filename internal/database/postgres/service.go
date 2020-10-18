@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
+	"log"
 )
 
 type PG struct {
@@ -108,7 +109,7 @@ func (p *PG) PreCompress(names []string, datatypes []string, tableName string) e
 	dataun = dataun[:len(dataun)-2]
 
 	//TODO: primary key, перенос ограничений данных
-	CreateDatabase := fmt.Sprintf("CREATE TABLE %s_compressed ( hash text, %s , UNIQUE(%s));",
+	CreateDatabase := fmt.Sprintf("CREATE TABLE %s_compressed ( hash text PRIMARY KEY, %s , UNIQUE(%s));",
 		tableName, data, dataun)
 
 	_, err := p.pool.Exec(CreateDatabase)
@@ -160,6 +161,41 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 }
 
 //изменение исходной таблицы
-func (p *PG) PostCompress() error {
+func (p *PG) PostCompress(compressible []string, tableName string) error {
+	//alter table
+	AddKey := fmt.Sprintf("ALTER TABLE \"%s\" ADD COLUMN hash TEXT", tableName)
+	log.Print(p.pool.Exec(AddKey))
+
+	//занесение новых значений
+	compress := ""
+	for _, name := range compressible {
+		//name = pgx.Identifier.Sanitize(name)
+		compress += "\"" + name + "\"" + ", "
+	}
+
+	if len(compress) > 2 {
+		compress = compress[:len(compress)-2]
+	}
+
+	compressQuery := fmt.Sprintf("UPDATE %s SET hash= md5(row(%s)::TEXT);", tableName, compress)
+	log.Print(compressQuery)
+	log.Print(p.pool.Exec(compressQuery))
+
+	//сброс старых колонок
+	for _, c := range compressible {
+		DropKey := fmt.Sprintf("ALTER TABLE %s DROP COLUMN  \"%s\"", tableName, c)
+		log.Print(p.pool.Exec(DropKey))
+	}
+
+	//установка ограничений
+	FKformat := "ALTER TABLE %s ADD CONSTRAINT hash_pkey " +
+		"FOREIGN KEY (hash) REFERENCES %s_compressed (hash) NOT VALID"
+	ForeignKey := fmt.Sprintf(FKformat, tableName, tableName)
+	log.Print(p.pool.Exec(ForeignKey))
+
+	//валидация ограничений
+	ForeignKeyValidate := fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT hash_pkey;", tableName)
+	log.Print(p.pool.Exec(ForeignKeyValidate))
+
 	return nil
 }

@@ -7,5 +7,5 @@ type IDatabase interface {
 	GetUniqueValues(string, string) (uint64, error)
 	PreCompress([]string, []string, string) error
 	Compress([]string, []string, string) error
-	PostCompress() error
+	PostCompress([]string, string) error
 }
