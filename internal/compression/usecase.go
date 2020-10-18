@@ -2,6 +2,7 @@ package compression
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"sync"
 )
@@ -211,6 +212,8 @@ func (t *Table) compressData() error {
 	//TODO: получение имен столбцов
 	c := []string{"valueA", "valueB"}
 	u := []string{"data"}
+
+	log.Print(t.Database.PreCompress(c, []string{"integer", "integer"}, t.Name))
 
 	err := t.Database.Compress(c, u, t.Name)
 	if err != nil {

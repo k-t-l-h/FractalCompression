@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
-	"log"
 )
 
 type PG struct {
@@ -65,7 +64,7 @@ func (p *PG) GetConstraints(tableName, columnName string) ([]string, error) {
 	return constraints, nil
 }
 
-//получение уникальных значений в столбце
+//получение количества значений в столбце
 func (p *PG) GetValues(tableName string) (uint64, error) {
 	var num uint64
 	//tableName = pgx.Identifier.Sanitize(tableName)
@@ -79,14 +78,13 @@ func (p *PG) GetValues(tableName string) (uint64, error) {
 	return num, nil
 }
 
+//получение количества уникальных значений в столбце
 func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error) {
 	var num uint64
 	//tableName = pgx.Identifier.Sanitize(tableName)
 	//columnName = pgx.Identifier.Sanitize(columnName)
-	log.Print(columnName)
 	GetUniqueValue := fmt.Sprintf("SELECT COUNT( DISTINCT \"%s\" ) FROM %s;", columnName, tableName)
 
-	log.Print(GetUniqueValue)
 	row := p.pool.QueryRow(GetUniqueValue)
 	err := row.Scan(&num)
 	if err != nil {
@@ -96,13 +94,37 @@ func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error
 	return num, nil
 }
 
+//создание таблицы уникальных значений
+//добавление в бд таблицы для хранения уникальных значений
+func (p *PG) PreCompress(names []string, datatypes []string, tableName string) error {
+	data := ""
+	dataun := ""
+	for i, _ := range names {
+		//name = pgx.Identifier.Sanitize(name)
+		data += "\"" + names[i] + "\" " + datatypes[i] + ", "
+		dataun += "\"" + names[i] + "\"" + ", "
+	}
+	data = data[:len(data)-2]
+	dataun = dataun[:len(dataun)-2]
+
+	//TODO: primary key, перенос ограничений данных
+	CreateDatabase := fmt.Sprintf("CREATE TABLE %s_compressed ( hash text, %s , UNIQUE(%s));",
+		tableName, data, dataun)
+
+	_, err := p.pool.Exec(CreateDatabase)
+	if err != nil {
+		return errors.Wrap(err, "error while creating table: ")
+	}
+	return nil
+}
+
+//вынесение в таблицу уникальных значений
 func (p *PG) Compress(compressible []string, other []string, tableName string) error {
 
 	if len(compressible) < 2 {
 		return errors.New("error while compressing data: nor enough columns")
 	}
 
-	//TODO: создать таблицы для сжатия данных и внешние и первичные ключи
 	compress := ""
 	for _, name := range compressible {
 		//name = pgx.Identifier.Sanitize(name)
@@ -123,8 +145,9 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 	}
 
 	//TODO: добавить возможность выбора хеш-функции
-	compressQuery := fmt.Sprintf("INSERT INTO compress ("+
-		"SELECT md5(ROW(%s)::TEXT), %s FROM %s) ON CONFLICT do nothing", compress, compress, tableName)
+	compressQuery := fmt.Sprintf("INSERT INTO %s_compressed ("+
+		"SELECT md5(ROW(%s)::TEXT), %s FROM %s) ON CONFLICT do nothing",
+		tableName, compress, compress, tableName)
 
 	//TODO: alter table drop column для in-memory записи
 	exec, err := p.pool.Exec(compressQuery)
@@ -133,5 +156,10 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 	} else if exec.RowsAffected() == 0 {
 		return errors.New("error while compressing data: nothing was compressed")
 	}
+	return nil
+}
+
+//изменение исходной таблицы
+func (p *PG) PostCompress() error {
 	return nil
 }

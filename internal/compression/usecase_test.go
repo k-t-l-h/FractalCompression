@@ -13,7 +13,7 @@ func TestTable_Compress(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -34,7 +34,7 @@ func TestTable_getCompressible(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -55,7 +55,7 @@ func TestTable_getConstrains(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -91,7 +91,7 @@ func TestTable_getDomens(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -112,7 +112,7 @@ func TestTable_getMeta(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -147,7 +147,7 @@ func TestTable_getPriorities(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -182,7 +182,7 @@ func TestTable_getValue(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
@@ -217,7 +217,7 @@ func TestTable_getValueFactor(t1 *testing.T) {
 		Columns        []*Column
 		Compressible   []int
 		Incompressible []int
-		Domens         []interface{}
+		Domens         []int
 	}
 	tests := []struct {
 		name   string
