@@ -77,6 +77,7 @@ func (t *Table) getConstrains() error {
 	for i := 0; i < len(t.Columns); i++ {
 		wg.Add(1)
 		go func(i int) {
+			//TODO: обработка различных обозначений ограничений в бд
 			constrains, err := t.Database.GetConstraints(t.Name, t.Columns[i].Name)
 			for _, name := range constrains {
 				if strings.HasSuffix(name, "_pkey") {

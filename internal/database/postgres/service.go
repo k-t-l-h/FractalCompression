@@ -150,7 +150,6 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 		"SELECT md5(ROW(%s)::TEXT), %s FROM %s) ON CONFLICT do nothing",
 		tableName, compress, compress, tableName)
 
-	//TODO: alter table drop column для in-memory записи
 	exec, err := p.pool.Exec(compressQuery)
 	if err != nil {
 		return errors.Wrap(err, "error while compressing data: ")
@@ -162,6 +161,9 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 
 //изменение исходной таблицы
 func (p *PG) PostCompress(compressible []string, tableName string) error {
+
+	//TODO: error handling & transaction
+
 	//alter table
 	AddKey := fmt.Sprintf("ALTER TABLE \"%s\" ADD COLUMN hash TEXT", tableName)
 	log.Print(p.pool.Exec(AddKey))
