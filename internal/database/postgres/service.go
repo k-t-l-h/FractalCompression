@@ -99,18 +99,21 @@ func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error
 //добавление в бд таблицы для хранения уникальных значений
 func (p *PG) PreCompress(names []string, datatypes []string, tableName string) error {
 	data := ""
-	dataun := ""
+	unique := ""
 	for i, _ := range names {
 		//name = pgx.Identifier.Sanitize(name)
 		data += "\"" + names[i] + "\" " + datatypes[i] + ", "
-		dataun += "\"" + names[i] + "\"" + ", "
+		unique += "\"" + names[i] + "\"" + ", "
 	}
 	data = data[:len(data)-2]
-	dataun = dataun[:len(dataun)-2]
+	unique = unique[:len(unique)-2]
 
-	//TODO: primary key, перенос ограничений данных
-	CreateDatabase := fmt.Sprintf("CREATE TABLE %s_compressed ( hash text PRIMARY KEY, %s , UNIQUE(%s));",
-		tableName, data, dataun)
+
+	//TODO: перенос ограничений данных
+	CreateDatabase := "CREATE TABLE %s_compressed " +
+		"( hash text PRIMARY KEY, %s , UNIQUE(%s));"
+	CreateDatabase = fmt.Sprintf(CreateDatabase,
+		tableName, data, unique)
 
 	_, err := p.pool.Exec(CreateDatabase)
 	if err != nil {
@@ -199,5 +202,8 @@ func (p *PG) PostCompress(compressible []string, tableName string) error {
 	ForeignKeyValidate := fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT hash_pkey;", tableName)
 	log.Print(p.pool.Exec(ForeignKeyValidate))
 
+	//TODO: vacuum
+	p.pool.Exec("VACUUM  wines2;")
 	return nil
 }
+

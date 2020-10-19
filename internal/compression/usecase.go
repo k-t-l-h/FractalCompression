@@ -1,8 +1,10 @@
 package compression
 
 import (
-	"errors"
+	ga "github.com/k-t-l-h/GenAlgo"
+	"github.com/pkg/errors"
 	"log"
+	"math/rand"
 	"strings"
 	"sync"
 )
@@ -203,24 +205,92 @@ func (t *Table) getPriorities() error {
 
 //генетический алгоритм
 func (t *Table) getDomens() error {
-	//TODO: генетический алгоритм
 	//TODO: обработка ошибок связи с бд внутри генетического алгоритма
-	t.Domens = []int{1, 2}
+
+	gao := ga.GenAlgo{
+		MaxIteration: 100,
+		Generator:    &ga.Generator{Len: len(t.Compressible)},
+		Crossover: &ga.UniformCrossover{
+			Probability:     0.5,
+			ProbabilityFunc: rand.Float64,
+		},
+		Mutate: &ga.OneDotMutatation{
+			Probability:     0.5,
+			ProbabilityFunc: rand.Float64,
+		},
+		Schema: &ga.Truncation{},
+		Fitness: func(unit ga.BaseUnit) float64 {
+			
+			bits := unit.GetCromosomes()
+			names := ""
+			count := 0
+			for i, _ := range bits {
+				if i == 1 {
+					count++
+					names += t.Columns[t.Compressible[i]].Name + ", "
+				}
+			}
+			names = names[:len(names)-2]
+			if count < 2 {
+				unit.SetFitness(0)
+				return 0
+			}
+
+			v, err := t.Database.GetUniqueValues(t.Name, names)
+			log.Print(err)
+			unit.SetFitness(float64(v))
+
+
+			return unit.GetFitness()
+		},
+		Select: &ga.Panmixia{},
+	}
+
+	gao.Init(len(t.Compressible)*5)
+	gao.Simulation()
+
+	max := gao.Population[0].GetCromosomes()
+	for i := 0; i < len(max); i++ {
+		if max[i] == 1 {
+			t.Domens = append(t.Domens, t.Compressible[i])
+		}
+	}
+
 	return nil
 }
 
 func (t *Table) compressData() error {
-	//TODO: получение имен столбцов
-	c := []string{"valueA", "valueB"}
-	u := []string{"data"}
 
-	log.Print(t.Database.PreCompress(c, []string{"integer", "integer"}, t.Name))
+	var c []string
+	var cd []string
+	var u []string
 
-	err := t.Database.Compress(c, u, t.Name)
-	if err != nil {
-		return errors.New("error while compressing data")
+	j := 0
+	for i := 0; i < len(t.Domens); {
+		if j == t.Domens[i] {
+			c = append(c, t.Columns[j].Name)
+			cd = append(cd, t.Columns[j].Type)
+			i++
+		} else {
+			u = append(u, t.Columns[j].Name)
+		}
+		j++
 	}
 
-	log.Print(t.Database.PostCompress(c, t.Name))
+	err := t.Database.PreCompress(c, cd, t.Name)
+	if err != nil {
+		return errors.Wrap(err, "error while data precompressing: ")
+	}
+
+	err = t.Database.Compress(c, u, t.Name)
+	if err != nil {
+		return errors.Wrap(err, "error while compressing data: ")
+	}
+
+	err = t.Database.PostCompress(c, t.Name)
+	if err != nil {
+		return errors.Wrap(err, "error while data post compressing: ")
+	}
+
 	return nil
 }
