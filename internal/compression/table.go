@@ -18,3 +18,7 @@ type Table struct {
 	//информация о выбранных доменах для сжатия
 	Domens []int
 }
+
+func NewTable(k uint64, name string, database internal.IDatabase) *Table {
+	return &Table{K: k, Name: name, Database: database}
+}
