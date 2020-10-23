@@ -84,20 +84,21 @@ func (p *PG) GetUniqueValues(tableName string, columnName string) (uint64, error
 	var num uint64
 	//tableName = pgx.Identifier.Sanitize(tableName)
 	//columnName = pgx.Identifier.Sanitize(columnName)
-	GetUniqueValue := fmt.Sprintf("SELECT COUNT( DISTINCT \"%s\" ) FROM %s;", columnName, tableName)
+	GetUniqueValue := fmt.Sprintf("SELECT COUNT(1) FROM (SELECT DISTINCT %s  FROM %s) AS F;", columnName, tableName)
 
 	row := p.pool.QueryRow(GetUniqueValue)
 	err := row.Scan(&num)
 	if err != nil {
 		return 0, errors.Wrap(err, "error while scanning unique values: ")
 	}
-
 	return num, nil
 }
 
 //создание таблицы уникальных значений
 //добавление в бд таблицы для хранения уникальных значений
-func (p *PG) PreCompress(names []string, datatypes []string, tableName string) error {
+func (p *PG) PreCompress(names []string, datatypes []string,
+	tableName string, keyName string, keyType string) error {
+
 	data := ""
 	unique := ""
 	for i, _ := range names {
@@ -108,12 +109,11 @@ func (p *PG) PreCompress(names []string, datatypes []string, tableName string) e
 	data = data[:len(data)-2]
 	unique = unique[:len(unique)-2]
 
-
 	//TODO: перенос ограничений данных
 	CreateDatabase := "CREATE TABLE %s_compressed " +
-		"( hash text PRIMARY KEY, %s , UNIQUE(%s));"
+		"(hash %s PRIMARY KEY, %s , UNIQUE(%s));"
 	CreateDatabase = fmt.Sprintf(CreateDatabase,
-		tableName, data, unique)
+		tableName, keyType, data, unique)
 
 	_, err := p.pool.Exec(CreateDatabase)
 	if err != nil {
@@ -123,7 +123,8 @@ func (p *PG) PreCompress(names []string, datatypes []string, tableName string) e
 }
 
 //вынесение в таблицу уникальных значений
-func (p *PG) Compress(compressible []string, other []string, tableName string) error {
+func (p *PG) Compress(compressible []string, other []string, tableName string,
+	keyName string) error {
 
 	if len(compressible) < 2 {
 		return errors.New("error while compressing data: nor enough columns")
@@ -148,10 +149,9 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 		uncompress = uncompress[:len(uncompress)-2]
 	}
 
-	//TODO: добавить возможность выбора хеш-функции
 	compressQuery := fmt.Sprintf("INSERT INTO %s_compressed ("+
-		"SELECT md5(ROW(%s)::TEXT), %s FROM %s) ON CONFLICT do nothing",
-		tableName, compress, compress, tableName)
+		"SELECT %s(ROW(%s)::TEXT), %s FROM %s) ON CONFLICT do nothing",
+		tableName, keyName, compress, compress, tableName)
 
 	exec, err := p.pool.Exec(compressQuery)
 	if err != nil {
@@ -163,12 +163,13 @@ func (p *PG) Compress(compressible []string, other []string, tableName string) e
 }
 
 //изменение исходной таблицы
-func (p *PG) PostCompress(compressible []string, tableName string) error {
+func (p *PG) PostCompress(compressible []string, tableName string,
+	keyName string, keyType string) error {
 
 	//TODO: error handling & transaction
 
 	//alter table
-	AddKey := fmt.Sprintf("ALTER TABLE \"%s\" ADD COLUMN hash TEXT", tableName)
+	AddKey := fmt.Sprintf("ALTER TABLE \"%s\" ADD COLUMN hash %s", tableName, keyType)
 	log.Print(p.pool.Exec(AddKey))
 
 	//занесение новых значений
@@ -182,7 +183,7 @@ func (p *PG) PostCompress(compressible []string, tableName string) error {
 		compress = compress[:len(compress)-2]
 	}
 
-	compressQuery := fmt.Sprintf("UPDATE %s SET hash= md5(row(%s)::TEXT);", tableName, compress)
+	compressQuery := fmt.Sprintf("UPDATE %s SET hash = %s(row(%s)::TEXT);", tableName, keyName, compress)
 	log.Print(compressQuery)
 	log.Print(p.pool.Exec(compressQuery))
 
@@ -202,8 +203,15 @@ func (p *PG) PostCompress(compressible []string, tableName string) error {
 	ForeignKeyValidate := fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT hash_pkey;", tableName)
 	log.Print(p.pool.Exec(ForeignKeyValidate))
 
-	//TODO: vacuum
-	p.pool.Exec("VACUUM  wines2;")
+	p.pool.Exec(fmt.Sprintf("VACUUM FULL %s;", tableName))
 	return nil
 }
 
+//создание функции хеширования
+func (p *PG) KeyFunction(script string) error {
+	_, err := p.pool.Exec(script)
+	if err != nil {
+		return errors.Wrap(err, "error while creating key function")
+	}
+	return nil
+}
