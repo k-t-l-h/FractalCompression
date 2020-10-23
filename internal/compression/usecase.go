@@ -11,34 +11,42 @@ import (
 
 func (t *Table) Compress() error {
 
+	log.Print("getting meta")
 	if ok := t.getMeta(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting constraints")
 	if ok := t.getConstrains(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting values")
 	if ok := t.getValue(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting unique values")
 	if ok := t.getValueFactor(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting compressible")
 	if ok := t.getCompressible(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting priorities")
 	if ok := t.getPriorities(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting domens")
 	if ok := t.getDomens(); ok != nil {
 		return ok
 	}
 
+	log.Print("getting compression")
 	if ok := t.compressData(); ok != nil {
 		return ok
 	}
@@ -76,6 +84,7 @@ func (t *Table) getConstrains() error {
 	var state bool
 	chn := make(chan error, len(t.Columns))
 
+	state = false
 	for i := 0; i < len(t.Columns); i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -140,7 +149,7 @@ func (t *Table) getValueFactor() error {
 	}
 
 	if state {
-		return errors.New("error while getting constrains")
+		return errors.New("error while getting values")
 	}
 
 	return nil
@@ -208,7 +217,7 @@ func (t *Table) getDomens() error {
 	//TODO: обработка ошибок связи с бд внутри генетического алгоритма
 
 	gao := ga.GenAlgo{
-		MaxIteration: 100,
+		MaxIteration: 20,
 		Generator:    &ga.Generator{Len: len(t.Compressible)},
 		Crossover: &ga.UniformCrossover{
 			Probability:     0.5,
@@ -220,33 +229,33 @@ func (t *Table) getDomens() error {
 		},
 		Schema: &ga.Truncation{},
 		Fitness: func(unit ga.BaseUnit) float64 {
-			
+
 			bits := unit.GetCromosomes()
 			names := ""
 			count := 0
-			for i, _ := range bits {
-				if i == 1 {
+			for i, j := range bits {
+				if j == 1 {
 					count++
-					names += t.Columns[t.Compressible[i]].Name + ", "
+					names += "\"" + t.Columns[t.Compressible[i]].Name + "\", "
 				}
 			}
-			names = names[:len(names)-2]
-			if count < 2 {
-				unit.SetFitness(0)
+			if count == 0 {
+				return 0
+			} else if count < 2 {
 				return 0
 			}
 
-			v, err := t.Database.GetUniqueValues(t.Name, names)
-			log.Print(err)
-			unit.SetFitness(float64(v))
+			names = names[:len(names)-2]
 
-
-			return unit.GetFitness()
+			v, _ := t.Database.GetUniqueValues(t.Name, names)
+			//TODO: проверка на длину ключа
+			unit.SetFitness((float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values))
+			return (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
 		},
 		Select: &ga.Panmixia{},
 	}
 
-	gao.Init(len(t.Compressible)*5)
+	gao.Init(len(t.Compressible) * 5)
 	gao.Simulation()
 
 	max := gao.Population[0].GetCromosomes()
@@ -277,17 +286,24 @@ func (t *Table) compressData() error {
 		j++
 	}
 
-	err := t.Database.PreCompress(c, cd, t.Name)
+	if t.key.Users {
+		err := t.Database.KeyFunction(t.key.Script)
+		if err != nil {
+			return errors.Wrap(err, "error while data precompressing")
+		}
+	}
+
+	err := t.Database.PreCompress(c, cd, t.Name, t.key.Name, t.key.Type)
 	if err != nil {
 		return errors.Wrap(err, "error while data precompressing: ")
 	}
 
-	err = t.Database.Compress(c, u, t.Name)
+	err = t.Database.Compress(c, u, t.Name, t.key.Name)
 	if err != nil {
 		return errors.Wrap(err, "error while compressing data: ")
 	}
 
-	err = t.Database.PostCompress(c, t.Name)
+	err = t.Database.PostCompress(c, t.Name, t.key.Name, t.key.Type)
 	if err != nil {
 		return errors.Wrap(err, "error while data post compressing: ")
 	}
