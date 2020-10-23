@@ -5,7 +5,8 @@ type IDatabase interface {
 	GetConstraints(string, string) ([]string, error)
 	GetValues(string) (uint64, error)
 	GetUniqueValues(string, string) (uint64, error)
-	PreCompress([]string, []string, string) error
-	Compress([]string, []string, string) error
-	PostCompress([]string, string) error
+	PreCompress([]string, []string, string, string, string) error
+	Compress([]string, []string, string, string) error
+	PostCompress([]string, string, string, string) error
+	KeyFunction(script string) error
 }
