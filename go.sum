@@ -4,6 +4,8 @@ github.com/jackc/pgx v3.6.2+incompatible h1:2zP5OD7kiyR3xzRYMhOcXVvkDZsImVXfj+yI
 github.com/jackc/pgx v3.6.2+incompatible/go.mod h1:0ZGrqGqkRlliWnWB4zKnWtjbSWbGkVEFm4TeybAXq+I=
 github.com/k-t-l-h/GenAlgo v0.0.0-20200612022445-966b9605a106 h1:4Lhhhgl0BlhdLzlbKcmCz+SrH4iO1vQuh3pwJoXqt3o=
 github.com/k-t-l-h/GenAlgo v0.0.0-20200612022445-966b9605a106/go.mod h1:Y/ZP2enbZwjm3jbgTSTcWlKtoZKrd2MBWzn/QE/WC/8=
+github.com/k-t-l-h/GenAlgo v0.0.0-20201019174345-7547fe93396b h1:IeyjGLi2t+8uJ9VGXJy+PJlB5pC7SyVZvVErL+EB31M=
+github.com/k-t-l-h/GenAlgo v0.0.0-20201019174345-7547fe93396b/go.mod h1:Y/ZP2enbZwjm3jbgTSTcWlKtoZKrd2MBWzn/QE/WC/8=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=
