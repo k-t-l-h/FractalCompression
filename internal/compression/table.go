@@ -17,8 +17,10 @@ type Table struct {
 	Incompressible []int
 	//информация о выбранных доменах для сжатия
 	Domens []int
+	//информация о хеше для кодирования
+	key Key
 }
 
-func NewTable(k uint64, name string, database internal.IDatabase) *Table {
-	return &Table{K: k, Name: name, Database: database}
+func NewTable(k uint64, name string, database internal.IDatabase, key Key) *Table {
+	return &Table{K: k, Name: name, Database: database, key: key}
 }
