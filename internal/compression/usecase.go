@@ -4,6 +4,7 @@ import (
 	ga "github.com/k-t-l-h/GenAlgo"
 	"github.com/pkg/errors"
 	"log"
+	"math"
 	"math/rand"
 	"strings"
 	"sync"
@@ -214,13 +215,15 @@ func (t *Table) getPriorities() error {
 
 //генетический алгоритм
 func (t *Table) getDomens() error {
+	var mapMutex sync.Mutex
+	columnValues := make(map[int]float64)
 	//TODO: обработка ошибок связи с бд внутри генетического алгоритма
-
+	//TODO: создание потокобезопасной функции
 	gao := ga.GenAlgo{
-		MaxIteration: 20,
+		MaxIteration: 40,
 		Generator:    &ga.Generator{Len: len(t.Compressible)},
 		Crossover: &ga.UniformCrossover{
-			Probability:     0.5,
+			Probability:     0.7,
 			ProbabilityFunc: rand.Float64,
 		},
 		Mutate: &ga.OneDotMutatation{
@@ -233,24 +236,42 @@ func (t *Table) getDomens() error {
 			bits := unit.GetCromosomes()
 			names := ""
 			count := 0
+			id := 0
+			num := len(bits)
 			for i, j := range bits {
+				id += int(math.Pow(2, float64(num))) * j
 				if j == 1 {
 					count++
 					names += "\"" + t.Columns[t.Compressible[i]].Name + "\", "
 				}
 			}
 			if count == 0 {
+				unit.SetFitness(0)
 				return 0
 			} else if count < 2 {
+				unit.SetFitness(0)
 				return 0
 			}
 
 			names = names[:len(names)-2]
 
+			mapMutex.Lock()
+			values := columnValues[id]
+			mapMutex.Unlock()
+
+			if values != 0 {
+				unit.SetFitness(values)
+				return values
+			}
+
 			v, _ := t.Database.GetUniqueValues(t.Name, names)
+			values = (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
 			//TODO: проверка на длину ключа
-			unit.SetFitness((float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values))
-			return (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
+			unit.SetFitness(values)
+			mapMutex.Lock()
+			columnValues[id] = values
+			mapMutex.Unlock()
+			return values
 		},
 		Select: &ga.Panmixia{},
 	}
