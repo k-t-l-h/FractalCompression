@@ -23,12 +23,12 @@ func (t *Table) Compress() error {
 	}
 
 	log.Print("getting values")
-	if ok := t.getValue(); ok != nil {
+	if ok := t.getValues(); ok != nil {
 		return ok
 	}
 
 	log.Print("getting unique values")
-	if ok := t.getValueFactor(); ok != nil {
+	if ok := t.getUniqueValues(); ok != nil {
 		return ok
 	}
 
@@ -89,7 +89,7 @@ func (t *Table) getConstrains() error {
 	for i := 0; i < len(t.Columns); i++ {
 		wg.Add(1)
 		go func(i int) {
-			//TODO: обработка различных обозначений ограничений в бд
+			//ограничения описаны по стилю postgres
 			constrains, err := t.Database.GetConstraints(t.Name, t.Columns[i].Name)
 			for _, name := range constrains {
 				if strings.HasSuffix(name, "_pkey") {
@@ -126,7 +126,7 @@ func (t *Table) getConstrains() error {
 
 //заполнение информации о количестве уникальных значений в столбцах
 //возвращает ошибку, если количество получить не удалось
-func (t *Table) getValueFactor() error {
+func (t *Table) getUniqueValues() error {
 	var wg sync.WaitGroup
 	var state bool
 	chn := make(chan error, len(t.Columns))
@@ -140,7 +140,38 @@ func (t *Table) getValueFactor() error {
 			chn <- err
 			defer wg.Done()
 		}(i)
+	}
 
+	wg.Wait()
+
+	for i := 0; i < len(t.Columns); i++ {
+		state = state || (<-chn != nil)
+	}
+
+	if state {
+		return errors.New("error while getting unique values")
+	}
+
+	return nil
+
+}
+
+//заполнение информации о количестве строк в таблице
+//возвращает ошибку, если количество получить не удалось
+func (t *Table) getValues() error {
+	var wg sync.WaitGroup
+	var state bool
+	chn := make(chan error, len(t.Columns))
+
+	for i := 0; i < len(t.Columns); i++ {
+
+		wg.Add(1)
+		go func(i int) {
+			value, err := t.Database.GetValues(t.Name, t.Columns[i].Name)
+			t.Columns[i].Values = value
+			chn <- err
+			defer wg.Done()
+		}(i)
 	}
 
 	wg.Wait()
@@ -154,21 +185,36 @@ func (t *Table) getValueFactor() error {
 	}
 
 	return nil
-
 }
 
-//заполнение информации о количестве строк в таблице
-//заполнение информации о индексах сжимаемых и несжимаемых столбцов
-//возвращает ошибку, если количество получить не удалось
-func (t *Table) getValue() error {
-	value, err := t.Database.GetValues(t.Name)
-	if err != nil {
-		return errors.New("error while counting values")
+//заполнение информации о длине типов данных
+//возвращает ошибку, если длины получить не удалось
+func (t *Table) getDataLen() error {
+	var wg sync.WaitGroup
+	var state bool
+	chn := make(chan error, len(t.Columns))
+
+	for i := 0; i < len(t.Columns); i++ {
+
+		wg.Add(1)
+		go func(i int) {
+			value, err := t.Database.Size(t.Columns[i].Type, 1)
+			t.Columns[i].DataLen = value
+			chn <- err
+			defer wg.Done()
+		}(i)
 	}
 
-	for _, col := range t.Columns {
-		col.Values = value
+	wg.Wait()
+
+	for i := 0; i < len(t.Columns); i++ {
+		state = state || (<-chn != nil)
 	}
+
+	if state {
+		return errors.New("error while getting data len")
+	}
+
 	return nil
 }
 
@@ -177,7 +223,7 @@ func (t *Table) getValue() error {
 func (t *Table) getCompressible() error {
 
 	for i, col := range t.Columns {
-		//
+
 		state := false
 		//точно несжимаемые столбцы
 		state = state || col.Constrains.Key
@@ -187,8 +233,6 @@ func (t *Table) getCompressible() error {
 		state = state || col.Constrains.ReferenceKey
 
 		//потенциально несжимаемые
-		//TODO: обработка пользовательских ограничений
-
 		if !state && (col.UniqueValues <= col.Values/t.K) {
 			t.Compressible = append(t.Compressible, i)
 		} else {
@@ -205,9 +249,7 @@ func (t *Table) getCompressible() error {
 //определение приоритетов столбцов
 func (t *Table) getPriorities() error {
 
-	//TODO: получение дерева приоритетов из базы данных
 	for _, col := range t.Columns {
-		//TODO: подстановка приоритета на основе дерева приоритетов
 		col.Priority = 1
 	}
 	return nil
@@ -215,9 +257,10 @@ func (t *Table) getPriorities() error {
 
 //генетический алгоритм
 func (t *Table) getDomens() error {
+	var dbError error
 	var mapMutex sync.Mutex
 	columnValues := make(map[int]float64)
-	//TODO: обработка ошибок связи с бд внутри генетического алгоритма
+
 	gao := ga.GenAlgo{
 		MaxIteration: 100,
 		Generator:    &ga.Generator{Len: len(t.Compressible)},
@@ -264,7 +307,8 @@ func (t *Table) getDomens() error {
 				return values
 			}
 
-			v, _ := t.Database.GetUniqueValues(t.Name, names)
+			var v uint64
+			v, dbError = t.Database.GetUniqueValues(t.Name, names)
 			values = (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
 
 			var sum uint64
@@ -291,10 +335,17 @@ func (t *Table) getDomens() error {
 			return values
 		},
 		Select: &ga.Panmixia{},
+		Exit: func() bool {
+			return dbError != nil
+		},
 	}
 
 	gao.Init(len(t.Compressible) * 10)
 	gao.Simulation()
+
+	if dbError != nil {
+		return errors.Wrap(dbError, "error while getting domes: ")
+	}
 
 	max := gao.Population[0].GetCromosomes()
 	for i := 0; i < len(max); i++ {
