@@ -189,7 +189,6 @@ func (p *PG) PostCompress(compressible []string, tableName string,
 		return errors.Wrap(err, "error while updating hash column")
 	}
 
-
 	//сброс старых колонок
 	for _, c := range compressible {
 		DropKey := fmt.Sprintf("ALTER TABLE %s DROP COLUMN  \"%s\"", tableName, c)
