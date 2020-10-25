@@ -1,5 +1,7 @@
 package compression
 
+import "FractalCompression/internal/config"
+
 type Key struct {
 	//название хеша для использования в запросах
 	Name string
@@ -11,4 +13,11 @@ type Key struct {
 	Users bool
 	//для не-встроенных: текст скрипта создания
 	Script string
+}
+
+func NewKey(cnf config.KeyConfig) *Key {
+	return &Key{Name: cnf.Name,
+		Type:   cnf.Type,
+		Len:    cnf.Len,
+		Script: cnf.Script}
 }

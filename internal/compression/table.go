@@ -1,6 +1,9 @@
 package compression
 
-import "FractalCompression/internal"
+import (
+	"FractalCompression/internal"
+	"FractalCompression/internal/config"
+)
 
 type Table struct {
 	//коэффициент минимального сжатия таблицы
@@ -21,6 +24,7 @@ type Table struct {
 	key Key
 }
 
-func NewTable(k uint64, name string, database internal.IDatabase, key Key) *Table {
-	return &Table{K: k, Name: name, Database: database, key: key}
+func NewTable(cnf *config.TableConfig, database internal.IDatabase, key *Key) *Table {
+	return &Table{K: cnf.K, Name: cnf.Name, Database: database, key: *key}
+	return &Table{K: cnf.K, Name: cnf.Name, Database: database, key: *key}
 }

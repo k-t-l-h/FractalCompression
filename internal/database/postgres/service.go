@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"FractalCompression/internal/config"
 	"fmt"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
@@ -10,8 +11,23 @@ type PG struct {
 	pool *pgx.ConnPool
 }
 
-func NewPG(pool *pgx.ConnPool) *PG {
-	return &PG{pool: pool}
+func NewPG(cnf config.DatabaseConfig) (*PG, error) {
+	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig: pgx.ConnConfig{
+			Host:     cnf.Host,
+			Port:     uint16(cnf.Port),
+			Database: cnf.Database,
+			User:     cnf.User,
+			Password: cnf.Password,
+		},
+		MaxConnections: int(cnf.MaxConn),
+		AfterConnect:   nil,
+		AcquireTimeout: 0,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &PG{pool: pool}, nil
 }
 
 //получение названий столбцов и их типов данных из информационной таблицы базы данных

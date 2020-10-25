@@ -1,0 +1,20 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "testing",
+    "user": "postgres",
+    "password": "password"
+  },
+  "table": {
+    "name": "music",
+    "k": 20
+  },
+  "key": {
+    "name": "hashcode",
+    "len": 8,
+    "users": true,
+    "type": "bigint",
+    "script": "CREATE OR REPLACE FUNCTION hashCode(_string text) RETURNS BIGINT AS $$\nDECLARE\n  val_ CHAR[];\n  h_ BIGINT := 0;\n  ascii_ BIGINT;\n  c_ char;\nBEGIN\n  val_ = regexp_split_to_array(_string, '');\n\n  FOR i in 1 .. array_length(val_, 1)\n  LOOP\n    c_ := (val_)[i];\n    ascii_ := ascii(c_);\n    h_ = (31 * h_ + ascii_ ) % (1e9 + 9);\n    raise info '%: % = %', i, c_, h_;\n  END LOOP;\nRETURN h_;\nEND;\n$$ LANGUAGE plpgsql;"
+  }
+}

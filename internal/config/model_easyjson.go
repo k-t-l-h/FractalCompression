@@ -117,6 +117,8 @@ func easyjsonC80ae7adDecodeFractalCompressionInternalConfig1(in *jlexer.Lexer, o
 			out.Len = uint64(in.Uint64())
 		case "script":
 			out.Script = string(in.String())
+		case "type":
+			out.Type = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -150,6 +152,11 @@ func easyjsonC80ae7adEncodeFractalCompressionInternalConfig1(out *jwriter.Writer
 		const prefix string = ",\"script\":"
 		out.RawString(prefix)
 		out.String(string(in.Script))
+	}
+	{
+		const prefix string = ",\"type\":"
+		out.RawString(prefix)
+		out.String(string(in.Type))
 	}
 	out.RawByte('}')
 }
