@@ -65,10 +65,10 @@ func (p *PG) GetConstraints(tableName, columnName string) ([]string, error) {
 }
 
 //получение количества значений в столбце
-func (p *PG) GetValues(tableName string) (uint64, error) {
+func (p *PG) GetValues(tableName string, columnName string) (uint64, error) {
 	var num uint64
 	//tableName = pgx.Identifier.Sanitize(tableName)
-	GetValue := fmt.Sprintf("SELECT COUNT(*) FROM %s;", tableName)
+	GetValue := fmt.Sprintf("SELECT COUNT(%s) FROM %s;", columnName, tableName)
 
 	row := p.pool.QueryRow(GetValue)
 	err := row.Scan(&num)
@@ -165,11 +165,12 @@ func (p *PG) Compress(compressible []string, other []string, tableName string,
 func (p *PG) PostCompress(compressible []string, tableName string,
 	keyName string, keyType string) error {
 
-	//TODO: error handling & transaction
-
 	//alter table
 	AddKey := fmt.Sprintf("ALTER TABLE \"%s\" ADD COLUMN hash %s", tableName, keyType)
-	p.pool.Exec(AddKey)
+	_, err := p.pool.Exec(AddKey)
+	if err != nil {
+		return errors.Wrap(err, "error while adding hash column")
+	}
 
 	//занесение новых значений
 	compress := ""
@@ -183,23 +184,36 @@ func (p *PG) PostCompress(compressible []string, tableName string,
 	}
 
 	compressQuery := fmt.Sprintf("UPDATE %s SET hash = %s(row(%s)::TEXT);", tableName, keyName, compress)
-	p.pool.Exec(compressQuery)
+	_, err = p.pool.Exec(compressQuery)
+	if err != nil {
+		return errors.Wrap(err, "error while updating hash column")
+	}
+
 
 	//сброс старых колонок
 	for _, c := range compressible {
 		DropKey := fmt.Sprintf("ALTER TABLE %s DROP COLUMN  \"%s\"", tableName, c)
-		p.pool.Exec(DropKey)
+		_, err = p.pool.Exec(DropKey)
+		if err != nil {
+			return errors.Wrap(err, "error while dropping columns")
+		}
 	}
 
 	//установка ограничений
 	FKformat := "ALTER TABLE %s ADD CONSTRAINT hash_pkey " +
 		"FOREIGN KEY (hash) REFERENCES %s_compressed (hash) NOT VALID"
 	ForeignKey := fmt.Sprintf(FKformat, tableName, tableName)
-	p.pool.Exec(ForeignKey)
+	_, err = p.pool.Exec(ForeignKey)
+	if err != nil {
+		return errors.Wrap(err, "error while adding foreign key")
+	}
 
 	//валидация ограничений
 	ForeignKeyValidate := fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT hash_pkey;", tableName)
-	p.pool.Exec(ForeignKeyValidate)
+	_, err = p.pool.Exec(ForeignKeyValidate)
+	if err != nil {
+		return errors.Wrap(err, "error while validating foreign key")
+	}
 
 	p.pool.Exec(fmt.Sprintf("VACUUM FULL %s;", tableName))
 	return nil
