@@ -321,7 +321,7 @@ func (t *Table) getDomens() error {
 			//сколько весит одна строчка
 			for i := 0; i < len(bits); i++ {
 				if bits[i] == 1 {
-					v2, _ := t.Database.Size(t.Columns[t.Compressible[i]].Type, v)
+					v2 := t.Columns[t.Compressible[i]].DataLen * v
 					sum += v2
 				}
 			}
