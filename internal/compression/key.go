@@ -6,7 +6,7 @@ type Key struct {
 	//тип ключа
 	Type string
 	//длина ключа
-	Len float64
+	Len uint64
 	//встроенный в бд хеш или нет
 	Users bool
 	//для не-встроенных: текст скрипта создания

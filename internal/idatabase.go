@@ -8,5 +8,6 @@ type IDatabase interface {
 	PreCompress([]string, []string, string, string, string) error
 	Compress([]string, []string, string, string) error
 	PostCompress([]string, string, string, string) error
-	KeyFunction(script string) error
+	KeyFunction(string) error
+	Size(string, uint64) (uint64, error)
 }

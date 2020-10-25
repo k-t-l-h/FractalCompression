@@ -218,16 +218,16 @@ func (t *Table) getDomens() error {
 	var mapMutex sync.Mutex
 	columnValues := make(map[int]float64)
 	//TODO: обработка ошибок связи с бд внутри генетического алгоритма
-	//TODO: создание потокобезопасной функции
 	gao := ga.GenAlgo{
-		MaxIteration: 40,
+		MaxIteration: 100,
 		Generator:    &ga.Generator{Len: len(t.Compressible)},
-		Crossover: &ga.UniformCrossover{
+		Crossover: &ga.NPointCrossover{
+			N:               2,
 			Probability:     0.7,
 			ProbabilityFunc: rand.Float64,
 		},
 		Mutate: &ga.OneDotMutatation{
-			Probability:     0.5,
+			Probability:     1,
 			ProbabilityFunc: rand.Float64,
 		},
 		Schema: &ga.Truncation{},
@@ -246,11 +246,11 @@ func (t *Table) getDomens() error {
 				}
 			}
 			if count == 0 {
-				unit.SetFitness(0)
-				return 0
+				unit.SetFitness(-1)
+				return -1
 			} else if count < 2 {
-				unit.SetFitness(0)
-				return 0
+				unit.SetFitness(-1)
+				return -1
 			}
 
 			names = names[:len(names)-2]
@@ -266,7 +266,24 @@ func (t *Table) getDomens() error {
 
 			v, _ := t.Database.GetUniqueValues(t.Name, names)
 			values = (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
-			//TODO: проверка на длину ключа
+
+			var sum uint64
+			sum = 0
+			//сколько весит одна строчка
+			for i := 0; i < len(bits); i++ {
+				if bits[i] == 1 {
+					v2, _ := t.Database.Size(t.Columns[t.Compressible[i]].Type, v)
+					sum += v2
+				}
+			}
+
+			//ключи в словарной таблице
+			//+ключи в главной таблице
+			//+n строк
+			if (t.key.Len*v + t.key.Len*t.Columns[0].Values + sum*v) > sum*t.Columns[0].Values {
+				values = -1
+			}
+
 			unit.SetFitness(values)
 			mapMutex.Lock()
 			columnValues[id] = values
@@ -276,7 +293,7 @@ func (t *Table) getDomens() error {
 		Select: &ga.Panmixia{},
 	}
 
-	gao.Init(len(t.Compressible) * 5)
+	gao.Init(len(t.Compressible) * 10)
 	gao.Simulation()
 
 	max := gao.Population[0].GetCromosomes()

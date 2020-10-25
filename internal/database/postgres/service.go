@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
-	"log"
 )
 
 type PG struct {
@@ -42,7 +41,7 @@ func (p *PG) GetNames(tableName string) ([]string, []string, error) {
 
 //получение ограничений
 func (p *PG) GetConstraints(tableName, columnName string) ([]string, error) {
-	//TODO: batch
+
 	GetConstraints := "SELECT constraint_name FROM information_schema.constraint_column_usage " +
 		"WHERE table_name = $1 AND column_name = $2"
 
@@ -170,7 +169,7 @@ func (p *PG) PostCompress(compressible []string, tableName string,
 
 	//alter table
 	AddKey := fmt.Sprintf("ALTER TABLE \"%s\" ADD COLUMN hash %s", tableName, keyType)
-	log.Print(p.pool.Exec(AddKey))
+	p.pool.Exec(AddKey)
 
 	//занесение новых значений
 	compress := ""
@@ -184,24 +183,23 @@ func (p *PG) PostCompress(compressible []string, tableName string,
 	}
 
 	compressQuery := fmt.Sprintf("UPDATE %s SET hash = %s(row(%s)::TEXT);", tableName, keyName, compress)
-	log.Print(compressQuery)
-	log.Print(p.pool.Exec(compressQuery))
+	p.pool.Exec(compressQuery)
 
 	//сброс старых колонок
 	for _, c := range compressible {
 		DropKey := fmt.Sprintf("ALTER TABLE %s DROP COLUMN  \"%s\"", tableName, c)
-		log.Print(p.pool.Exec(DropKey))
+		p.pool.Exec(DropKey)
 	}
 
 	//установка ограничений
 	FKformat := "ALTER TABLE %s ADD CONSTRAINT hash_pkey " +
 		"FOREIGN KEY (hash) REFERENCES %s_compressed (hash) NOT VALID"
 	ForeignKey := fmt.Sprintf(FKformat, tableName, tableName)
-	log.Print(p.pool.Exec(ForeignKey))
+	p.pool.Exec(ForeignKey)
 
 	//валидация ограничений
 	ForeignKeyValidate := fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT hash_pkey;", tableName)
-	log.Print(p.pool.Exec(ForeignKeyValidate))
+	p.pool.Exec(ForeignKeyValidate)
 
 	p.pool.Exec(fmt.Sprintf("VACUUM FULL %s;", tableName))
 	return nil
@@ -214,4 +212,17 @@ func (p *PG) KeyFunction(script string) error {
 		return errors.Wrap(err, "error while creating key function")
 	}
 	return nil
+}
+
+//получение размера, необходимого для хранения данных
+func (p *PG) Size(data string, values uint64) (uint64, error) {
+	var size uint64
+	GetSize := fmt.Sprintf("SELECT pg_column_size(1::%s);", data)
+
+	row := p.pool.QueryRow(GetSize)
+	err := row.Scan(&size)
+	if err != nil {
+		return 0, errors.Wrap(err, "error while getting sizes: ")
+	}
+	return size, nil
 }
