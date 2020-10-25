@@ -32,6 +32,11 @@ func (t *Table) Compress() error {
 		return ok
 	}
 
+	log.Print("getting data len")
+	if ok := t.getDataLen(); ok != nil {
+		return ok
+	}
+
 	log.Print("getting compressible")
 	if ok := t.getCompressible(); ok != nil {
 		return ok
