@@ -2,44 +2,42 @@ package main
 
 import (
 	"FractalCompression/internal/compression"
+	"FractalCompression/internal/config"
 	"FractalCompression/internal/database/postgres"
 	"github.com/jackc/pgx"
 	"log"
 )
 
 func main() {
+
+	cnf, err := config.GetData("data.json")
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
 	//получение конфигураций
 	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
 		ConnConfig: pgx.ConnConfig{
-			Host:     "127.0.0.1",
-			Port:     5432,
-			Database: "testing",
-			User:     "postgres",
-			Password: "password",
+			Host:     cnf.DC.Host,
+			Port:     uint16(cnf.DC.Port),
+			Database: cnf.DC.Database,
+			User:     cnf.DC.User,
+			Password: cnf.DC.Password,
 		},
-		MaxConnections: 20,
+		MaxConnections: int(cnf.DC.MaxConn),
 		AfterConnect:   nil,
 		AcquireTimeout: 0,
 	})
-	log.Print(err)
+	if err != nil {
+		log.Print(err)
+		return
+	}
 	db := postgres.NewPG(pool)
 
-	key := compression.Key{Name: "hashCode", Type: "bigint",
-		Len: 8, Users: true,
-		Script: "CREATE OR REPLACE FUNCTION hashCode(_string text) " +
-			"RETURNS BIGINT AS $$\nDECLARE\n  val_ CHAR[];\n  " +
-			"h_ BIGINT := 0;\n  ascii_ BIGINT;\n  " +
-			"c_ char;\nBEGIN\n " +
-			" val_ = regexp_split_to_array(_string, '');\n\n  " +
-			"FOR i in 1 .. array_length(val_, 1)\n  " +
-			"LOOP\n    c_ := (val_)[i];\n    " +
-			"ascii_ := ascii(c_);\n    " +
-			"h_ = (31 * h_ + ascii_ ) % (1e9 + 9);\n    " +
-			"raise info '%: % = %', i, c_, h_;\n  " +
-			"END LOOP;\n" +
-			"RETURN h_;\n" +
-			"END;\n" +
-			"$$ LANGUAGE plpgsql;"}
-	tb := compression.NewTable(10, "music", db, key)
+	key := compression.Key{Name: cnf.KC.Name, Type: cnf.KC.Type,
+		Len: cnf.KC.Len, Users: cnf.KC.Users,
+		Script: cnf.KC.Script}
+	tb := compression.NewTable(cnf.TC.K, cnf.TC.Name, db, key)
 	log.Print(tb.Compress())
 }
