@@ -4,12 +4,20 @@ import (
 	"FractalCompression/internal/compression"
 	"FractalCompression/internal/config"
 	"FractalCompression/internal/database/postgres"
+	"flag"
 	"log"
 )
 
+var fn string
+
+func init() {
+	flag.StringVar(&fn, "filename", "", "set the filename of config")
+}
+
 func main() {
 
-	cnf, err := config.GetData("data.json")
+	flag.Parse()
+	cnf, err := config.GetData(fn)
 	if err != nil {
 		log.Print(err)
 		return
