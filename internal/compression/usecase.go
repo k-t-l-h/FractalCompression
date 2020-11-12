@@ -1,11 +1,8 @@
 package compression
 
 import (
-	ga "github.com/k-t-l-h/GenAlgo"
 	"github.com/pkg/errors"
 	"log"
-	"math"
-	"math/rand"
 	"strings"
 	"sync"
 )
@@ -262,104 +259,13 @@ func (t *Table) getPriorities() error {
 
 //генетический алгоритм
 func (t *Table) getDomens() error {
-	var dbError error
-	var mapMutex sync.Mutex
-	columnValues := make(map[int]float64)
+	switch t.Strategy {
+	case "genalgo":
+		return t.GenAlgoStrategy()
+	default:
+		return t.BruteForceStrategy()
 
-	gao := ga.GenAlgo{
-		MaxIteration: 100,
-		Generator:    &ga.Generator{Len: len(t.Compressible)},
-		Crossover: &ga.NPointCrossover{
-			N:               2,
-			Probability:     0.7,
-			ProbabilityFunc: rand.Float64,
-		},
-		Mutate: &ga.OneDotMutatation{
-			Probability:     1,
-			ProbabilityFunc: rand.Float64,
-		},
-		Schema: &ga.Truncation{},
-		Fitness: func(unit ga.BaseUnit) float64 {
-
-			bits := unit.GetCromosomes()
-			names := ""
-			count := 0
-			id := 0
-			num := len(bits)
-			for i, j := range bits {
-				id += int(math.Pow(2, float64(num))) * j
-				if j == 1 {
-					count++
-					names += "\"" + t.Columns[t.Compressible[i]].Name + "\", "
-				}
-			}
-			if count == 0 {
-				unit.SetFitness(-1)
-				return -1
-			} else if count < 2 {
-				unit.SetFitness(-1)
-				return -1
-			}
-
-			names = names[:len(names)-2]
-
-			mapMutex.Lock()
-			values := columnValues[id]
-			mapMutex.Unlock()
-
-			if values != 0 {
-				unit.SetFitness(values)
-				return values
-			}
-
-			var v uint64
-			v, dbError = t.Database.GetUniqueValues(t.Name, names)
-			values = (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
-
-			var sum uint64
-			sum = 0
-			//сколько весит одна строчка
-			for i := 0; i < len(bits); i++ {
-				if bits[i] == 1 {
-					v2 := t.Columns[t.Compressible[i]].DataLen * v
-					sum += v2
-				}
-			}
-
-			//ключи в словарной таблице
-			//+ключи в главной таблице
-			//+n строк
-			if (t.key.Len*v + t.key.Len*t.Columns[0].Values + sum*v) > sum*t.Columns[0].Values {
-				values = -1
-			}
-
-			unit.SetFitness(values)
-			mapMutex.Lock()
-			columnValues[id] = values
-			mapMutex.Unlock()
-			return values
-		},
-		Select: &ga.Panmixia{},
-		Exit: func() bool {
-			return dbError != nil
-		},
 	}
-
-	gao.Init(len(t.Compressible) * 10)
-	gao.Simulation()
-
-	if dbError != nil {
-		return errors.Wrap(dbError, "error while getting domes: ")
-	}
-
-	max := gao.Population[0].GetCromosomes()
-	for i := 0; i < len(max); i++ {
-		if max[i] == 1 {
-			t.Domens = append(t.Domens, t.Compressible[i])
-		}
-	}
-
-	return nil
 }
 
 func (t *Table) compressData() error {

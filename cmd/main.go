@@ -22,7 +22,6 @@ func main() {
 		log.Print(err)
 		return
 	}
-
 	db, err := postgres.NewPG(cnf.DC)
 	if err != nil {
 		log.Print(err)

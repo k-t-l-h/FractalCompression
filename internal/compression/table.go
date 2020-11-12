@@ -22,9 +22,10 @@ type Table struct {
 	Domens []int
 	//информация о хеше для кодирования
 	key Key
+	//информация о стратегии выбора доменов
+	Strategy string
 }
 
 func NewTable(cnf *config.TableConfig, database internal.IDatabase, key *Key) *Table {
-	return &Table{K: cnf.K, Name: cnf.Name, Database: database, key: *key}
-	return &Table{K: cnf.K, Name: cnf.Name, Database: database, key: *key}
+	return &Table{K: cnf.K, Name: cnf.Name, Database: database, key: *key, Strategy: cnf.Strategy}
 }

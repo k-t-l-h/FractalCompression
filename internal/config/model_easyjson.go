@@ -40,6 +40,8 @@ func easyjsonC80ae7adDecodeFractalCompressionInternalConfig(in *jlexer.Lexer, ou
 			out.K = uint64(in.Uint64())
 		case "name":
 			out.Name = string(in.String())
+		case "strategy":
+			out.Strategy = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -63,6 +65,11 @@ func easyjsonC80ae7adEncodeFractalCompressionInternalConfig(out *jwriter.Writer,
 		const prefix string = ",\"name\":"
 		out.RawString(prefix)
 		out.String(string(in.Name))
+	}
+	{
+		const prefix string = ",\"strategy\":"
+		out.RawString(prefix)
+		out.String(string(in.Strategy))
 	}
 	out.RawByte('}')
 }
