@@ -6,10 +6,44 @@ import (
 	"github.com/pkg/errors"
 	"math"
 	"math/rand"
+	"sort"
 	"sync"
 )
 
+type Case struct {
+	Max   float64
+	Names []string
+	Value float64
+}
+
+type Cases []Case
+
+func (c Cases) Len() int {
+	return len(c)
+}
+
+func (c Cases) Less(i int, j int) bool {
+
+	if c[i].Value > c[i].Max && c[j].Value > c[j].Max {
+		//оба соответствуют условию
+		return len(c[i].Names) < len(c[j].Names)
+	} else if c[i].Value < c[i].Max && c[j].Value > c[j].Max {
+		//первый больше порога
+		return true
+	} else if c[i].Value > c[i].Max && c[j].Value < c[j].Max {
+		//второй больше порога
+		return false
+	} else {
+		return len(c[i].Names) < len(c[j].Names)
+	}
+}
+
+func (c Cases) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
 func (t *Table) BruteForceStrategy() error {
+
 	//список всех имен
 	var names []string
 	//получение списка всех имен
@@ -18,11 +52,10 @@ func (t *Table) BruteForceStrategy() error {
 	}
 	all := combinations.All(names)
 
-	var best []string
-	var bestScore float64
+	var cs []Case
 
-	bestScore = 0
 	count := 0
+	max := float64(t.Columns[0].Values) - float64(t.Columns[0].Values*(1/t.K))/float64(t.Columns[0].Values)
 	for _, one := range all {
 		count = 0
 		str := ""
@@ -36,21 +69,33 @@ func (t *Table) BruteForceStrategy() error {
 		if count > 1 {
 			v, _ := t.Database.GetUniqueValues(t.Name, str)
 			values := (float64(t.Columns[0].Values) - float64(v)) / float64(t.Columns[0].Values)
-			if values > bestScore {
-				best = one
-				bestScore = values
-			}
+			cs = append(cs, Case{
+				Names: one,
+				Value: values,
+				Max:   max,
+			})
 		}
 
 	}
-	//TODO: один проход
-	for _, b := range best {
-		for i, _ := range t.Columns {
-			if b == t.Columns[i].Name {
-				t.Domens = append(t.Domens, i)
-			}
+
+	sort.Sort(Cases(cs))
+	var best Case
+
+	if len(cs) > 0 {
+		best = cs[0]
+	}
+
+	var i int
+	var b int
+	i = 0
+	b = 0
+	for i = 0; i < len(t.Columns) && b < len(best.Names); i++ {
+		if t.Columns[i].Name == best.Names[b] {
+			t.Domens = append(t.Domens, i)
+			b++
 		}
 	}
+	//TODO: проверки и обработка ошибок
 	return nil
 }
 
@@ -137,7 +182,6 @@ func (t *Table) GenAlgoStrategy() error {
 			return dbError != nil
 		},
 	}
-
 	gao.Init(len(t.Compressible) * 10)
 	gao.Simulation()
 
