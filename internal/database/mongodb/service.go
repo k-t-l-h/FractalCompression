@@ -4,6 +4,7 @@ import (
 	"FractalCompression/internal/config"
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	_ "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,25 +31,33 @@ func NewMG(cnf config.CompressionConfig) (*MG, error) {
 }
 
 func (mg *MG) GetNames(tableName string) ([]string, []string, error) {
-	//get names of field
+
 	command := "\n  \"mapreduce\" : \"" + tableName + "\"," +
 		"\n  \"map\" : function() {\n    for (var key in this) " +
 		"{ emit(key, null); }\n  },\n  \"reduce\" : function(key, stuff) " +
-		"{ return null; }, \n  \"out\": \" "+ tableName +"\" + \"_keys\"\n"
+		"{ return null; }, \n  \"out\": \" " + tableName + "\" + \"_keys\"\n"
 
-	res := mg.client.Database(tableName).RunCommand(context.Background(), command, nil)
-	log.Print(res)
-	res2, err := mg.client.Database(mg.database).
+	tag := mg.client.Database(tableName).RunCommand(context.Background(), command, nil)
+	if err := tag.Err(); err != nil {
+		return nil, nil, errors.Wrap(err, "error while getting columns names: ")
+	}
+
+	rows, err := mg.client.Database(mg.database).
 		Collection(tableName+"_keys").
 		Distinct(context.Background(), "_id", bson.D{})
-	//get types of field
-	log.Print(res2, err)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error while getting columns names: ")
+	}
+
 	var names []string
 
-	for _, x := range res2 {
-		names = append(names,  fmt.Sprintf("%v", x))
+	for _, x := range rows {
+		names = append(names, fmt.Sprintf("%v", x))
 	}
-	log.Print(names)
-	return nil, nil, nil
-}
+	//TODO: обеспечить проверку типа
+	for _, row := range names {
+		mg.client.Database(mg.database).Collection(tableName).Distinct(context.TODO(), row, nil)
+	}
 
+	return names, nil, nil
+}
