@@ -1,14 +1,15 @@
 {
   "database": {
     "host": "localhost",
-    "port": 5432,
-    "database": "testing",
+    "port": 27017,
+    "database": "test",
     "user": "postgres",
     "password": "password"
   },
   "table": {
     "name": "music",
-    "k": 20
+    "k": 20,
+    "strategy": "force"
   },
   "key": {
     "name": "hashcode",

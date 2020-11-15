@@ -12,6 +12,5 @@ require (
 	github.com/mailru/easyjson v0.7.6
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.2.0 // indirect
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 // indirect
-	golang.org/x/text v0.3.0 // indirect
+	go.mongodb.org/mongo-driver v1.4.3
 )

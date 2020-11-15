@@ -1,9 +1,8 @@
 package main
 
 import (
-	"FractalCompression/internal/compression"
 	"FractalCompression/internal/config"
-	"FractalCompression/internal/database/postgres"
+	mg "FractalCompression/internal/database/mongodb"
 	"flag"
 	"log"
 )
@@ -23,13 +22,14 @@ func main() {
 		return
 	}
 
-	db, err := postgres.NewPG(cnf.DC)
+	db, err := mg.NewMG(cnf)
 	if err != nil {
-		log.Print(err)
-		return
+		log.Fatal(err)
 	}
+	log.Print(db)
+	log.Print(db.GetNames("things"))
 
-	key := compression.NewKey(cnf.KC)
-	tb := compression.NewTable(&cnf.TC, db, key)
-	log.Print(tb.Compress())
+	//key := compression.NewKey(cnf.KC)
+	//tb := compression.NewTable(&cnf.TC, db, key)
+	//log.Print(tb.Compress())
 }

@@ -31,8 +31,24 @@ func NewMG(cnf config.CompressionConfig) (*MG, error) {
 
 func (mg *MG) GetNames(tableName string) ([]string, []string, error) {
 	//get names of field
-	command := bson.D{}
-	mg.client.Database(tableName).RunCommand(context.Background(), command, nil)
+	command := "\n  \"mapreduce\" : \"" + tableName + "\"," +
+		"\n  \"map\" : function() {\n    for (var key in this) " +
+		"{ emit(key, null); }\n  },\n  \"reduce\" : function(key, stuff) " +
+		"{ return null; }, \n  \"out\": \" "+ tableName +"\" + \"_keys\"\n"
+
+	res := mg.client.Database(tableName).RunCommand(context.Background(), command, nil)
+	log.Print(res)
+	res2, err := mg.client.Database(mg.database).
+		Collection(tableName+"_keys").
+		Distinct(context.Background(), "_id", bson.D{})
 	//get types of field
+	log.Print(res2, err)
+	var names []string
+
+	for _, x := range res2 {
+		names = append(names,  fmt.Sprintf("%v", x))
+	}
+	log.Print(names)
 	return nil, nil, nil
 }
+
