@@ -32,21 +32,22 @@ func NewMG(cnf config.CompressionConfig) (*MG, error) {
 
 func (mg *MG) GetNames(tableName string) ([]string, []string, error) {
 
-	command := "\n  \"mapreduce\" : \"" + tableName + "\"," +
-		"\n  \"map\" : function() {\n    for (var key in this) " +
-		"{ emit(key, null); }\n  },\n  \"reduce\" : function(key, stuff) " +
-		"{ return null; }, \n  \"out\": \" " + tableName + "\" + \"_keys\"\n"
+	comm := bson.D{bson.E{"mapreduce", tableName},
+		bson.E{"map", "function(){for (var key in this) { emit(key, null); }"},
+		bson.E{"reduce", "function(key, stuff) { return null; }"},
+		bson.E{"out", tableName + "_keys"}}
 
-	tag := mg.client.Database(tableName).RunCommand(context.Background(), command, nil)
+	tag := mg.client.Database(tableName).RunCommand(context.Background(), comm, nil)
+
 	if err := tag.Err(); err != nil {
-		return nil, nil, errors.Wrap(err, "error while getting columns names: ")
+		return nil, nil, errors.Wrap(err, "error while getting columns names 1")
 	}
 
 	rows, err := mg.client.Database(mg.database).
 		Collection(tableName+"_keys").
 		Distinct(context.Background(), "_id", bson.D{})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error while getting columns names: ")
+		return nil, nil, errors.Wrap(err, "error while getting columns names 2")
 	}
 
 	var names []string
@@ -56,7 +57,23 @@ func (mg *MG) GetNames(tableName string) ([]string, []string, error) {
 	}
 	//TODO: обеспечить проверку типа
 	for _, row := range names {
-		mg.client.Database(mg.database).Collection(tableName).Distinct(context.TODO(), row, nil)
+		if row != "type" {
+			stage := bson.D{
+				{Key: "$project", Value: bson.D{
+					bson.E{Key: row,
+						Value: bson.E{Key: "$type",
+							Value: fmt.Sprintf("$%s", row)},
+					},
+				},
+				},
+			}
+			it, _ := mg.client.Database(mg.database).Collection(tableName).
+				Aggregate(context.TODO(), mongo.Pipeline{stage})
+
+			for it.Next(context.Background()) {
+				//log.Print(it.Current.String())
+			}
+		}
 	}
 
 	return names, nil, nil
