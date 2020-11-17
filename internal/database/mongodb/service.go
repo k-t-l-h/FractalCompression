@@ -30,20 +30,20 @@ func NewMG(cnf config.CompressionConfig) (*MG, error) {
 	return &MG{client: client, database: cnf.DC.Database}, nil
 }
 
-func (mg *MG) GetNames(tableName string) ([]string, []string, error) {
+func (m *MG) GetNames(tableName string) ([]string, []string, error) {
 
 	comm := bson.D{bson.E{"mapreduce", tableName},
 		bson.E{"map", "function(){for (var key in this) { emit(key, null); }"},
 		bson.E{"reduce", "function(key, stuff) { return null; }"},
 		bson.E{"out", tableName + "_keys"}}
 
-	tag := mg.client.Database(tableName).RunCommand(context.Background(), comm, nil)
+	tag := m.client.Database(tableName).RunCommand(context.Background(), comm, nil)
 
 	if err := tag.Err(); err != nil {
 		return nil, nil, errors.Wrap(err, "error while getting columns names 1")
 	}
 
-	rows, err := mg.client.Database(mg.database).
+	rows, err := m.client.Database(m.database).
 		Collection(tableName+"_keys").
 		Distinct(context.Background(), "_id", bson.D{})
 	if err != nil {
@@ -57,24 +57,49 @@ func (mg *MG) GetNames(tableName string) ([]string, []string, error) {
 	}
 	//TODO: обеспечить проверку типа
 	for _, row := range names {
-		if row != "type" {
-			stage := bson.D{
-				{Key: "$project", Value: bson.D{
-					bson.E{Key: row,
-						Value: bson.E{Key: "$type",
-							Value: fmt.Sprintf("$%s", row)},
-					},
-				},
-				},
-			}
-			it, _ := mg.client.Database(mg.database).Collection(tableName).
-				Aggregate(context.TODO(), mongo.Pipeline{stage})
 
-			for it.Next(context.Background()) {
-				//log.Print(it.Current.String())
-			}
+		stage := bson.D{
+			{Key: "$project", Value: bson.D{
+				bson.E{Key: row,
+					Value: bson.E{Key: "$type",
+						Value: fmt.Sprintf("$%s", row)},
+				},
+			},
+			},
 		}
+		it, err := m.client.Database(m.database).Collection(tableName).
+			Aggregate(context.Background(), mongo.Pipeline{stage})
+
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "error while getting columns names 3")
+		}
+
+		for it.Next(context.Background()) {
+			//log.Print(it.Current.String())
+		}
+
 	}
 
 	return names, nil, nil
+}
+
+func (m *MG) GetConstraints(tableName, columnName string) ([]string, error) {
+	//нет схемы, нет и ограничений
+	return nil, nil
+}
+
+func (m *MG) GetValues(tableName string, columnName string) (uint64, error) {
+	var num uint64
+
+	filter := bson.D{}
+
+	curs, err := m.client.Database(m.database).Collection(tableName).
+		CountDocuments(context.Background(), filter)
+
+	if err != nil {
+		return 0, errors.Wrap(err, "error while scanning all values: ")
+	}
+
+	num = uint64(curs)
+	return num, nil
 }
