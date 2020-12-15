@@ -3,7 +3,7 @@ package main
 import (
 	"FractalCompression/internal/compression"
 	"FractalCompression/internal/config"
-	"FractalCompression/internal/database/postgres"
+	"FractalCompression/internal/database/naive_postgres"
 	"flag"
 	"log"
 )
@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 
-	db, err := postgres.NewPG(cnf.DC)
+	db, err := naive_postgres.NewNPG(cnf.DC)
 	if err != nil {
 		log.Print(err)
 		return
