@@ -103,3 +103,27 @@ func (m *MG) GetValues(tableName string, columnName string) (uint64, error) {
 	num = uint64(curs)
 	return num, nil
 }
+
+func (m *MG) GetUniqueValues(string, string) (uint64, error){
+	return 0, nil
+}
+
+func (m *MG) PreCompress([]string, []string, string, string, string) error {
+	return nil
+}
+
+func (m *MG) Compress([]string, []string, string, string) error {
+	return nil
+}
+
+func (m *MG) PostCompress([]string, string, string, string) error {
+	return nil
+}
+
+func (m *MG) KeyFunction(string) error {
+	return nil
+}
+
+func (m *MG) Size(string, uint64) (uint64, error) {
+	return 0, nil
+}
