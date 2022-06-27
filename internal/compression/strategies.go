@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+
+	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
 type Case struct {
@@ -104,8 +106,11 @@ func (t *Table) GenAlgoStrategy() error {
 	var mapMutex sync.Mutex
 	columnValues := make(map[int]float64)
 
+	arr := make([]opts.LineData, 0)
+	arr2 := make([]int, 0)
+
 	gao := ga.GenAlgo{
-		MaxIteration: 100,
+		MaxIteration: 200,
 		Generator:    &ga.Generator{Len: len(t.Compressible)},
 		Crossover: &ga.NPointCrossover{
 			N:               2,
@@ -113,7 +118,7 @@ func (t *Table) GenAlgoStrategy() error {
 			ProbabilityFunc: rand.Float64,
 		},
 		Mutate: &ga.OneDotMutatation{
-			Probability:     1,
+			Probability:     2,
 			ProbabilityFunc: rand.Float64,
 		},
 		Schema: &ga.Truncation{},
@@ -178,10 +183,25 @@ func (t *Table) GenAlgoStrategy() error {
 			return values
 		},
 		Select: &ga.Panmixia{},
-		Exit: func() bool {
-			return dbError != nil
-		},
+
 	}
+
+	a0 := 0
+	gao.Exit = func() bool {
+		a0++
+		var med float64
+		for i := 0; i < len((gao.Population)); i++ {
+			med += gao.Population[i].GetFitness()
+		}
+		if a0 > 10 {
+			arr2 = append(arr2, a0)
+			arr = append(arr, opts.LineData{Value: med/ float64(len(gao.Population))})
+		}
+		return dbError != nil
+	}
+
+
+
 	gao.Init(len(t.Compressible) * 10)
 	gao.Simulation()
 
@@ -195,6 +215,5 @@ func (t *Table) GenAlgoStrategy() error {
 			t.Domens = append(t.Domens, t.Compressible[i])
 		}
 	}
-
 	return nil
 }

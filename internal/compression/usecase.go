@@ -5,10 +5,12 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 )
 
 func (t *Table) Compress() error {
 
+	cr := time.Now()
 	log.Print("getting meta")
 	if ok := t.getMeta(); ok != nil {
 		return ok
@@ -49,11 +51,13 @@ func (t *Table) Compress() error {
 		return ok
 	}
 
+
 	log.Print("getting compression")
 	if ok := t.compressData(); ok != nil {
 		return ok
 	}
 
+	log.Println(time.Since(cr).Microseconds())
 	return nil
 }
 
@@ -292,6 +296,7 @@ func (t *Table) compressData() error {
 			return errors.Wrap(err, "error while data precompressing")
 		}
 	}
+
 
 	err := t.Database.PreCompress(c, cd, t.Name, t.key.Name, t.key.Type)
 	if err != nil {
