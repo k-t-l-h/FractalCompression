@@ -16,8 +16,9 @@ type DatabaseConfig struct {
 }
 
 type TableConfig struct {
-	K    uint64 `json:"k"`
-	Name string `json:"name"`
+	K        uint64 `json:"k"`
+	Name     string `json:"name"`
+	Strategy string `json:"strategy"`
 }
 
 type KeyConfig struct {

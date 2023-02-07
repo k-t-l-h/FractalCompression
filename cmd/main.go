@@ -8,7 +8,9 @@ import (
 	"log"
 )
 
-var fn string
+var (
+	fn string
+)
 
 func init() {
 	flag.StringVar(&fn, "filename", "", "set the filename of config")
@@ -17,12 +19,12 @@ func init() {
 func main() {
 
 	flag.Parse()
+
 	cnf, err := config.GetData(fn)
 	if err != nil {
 		log.Print(err)
 		return
 	}
-
 	db, err := postgres.NewPG(cnf.DC)
 	if err != nil {
 		log.Print(err)

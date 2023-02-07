@@ -2,13 +2,14 @@
   "database": {
     "host": "localhost",
     "port": 5432,
-    "database": "testing",
+    "database": "postgres",
     "user": "postgres",
     "password": "password"
   },
   "table": {
-    "name": "music",
-    "k": 20
+    "name": "starship",
+    "k":2,
+    "strategy": "genalgo"
   },
   "key": {
     "name": "hashcode",
